@@ -126,6 +126,11 @@
       transform: scale(0.98);
     }
 
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
     .btn-primary {
       background: var(--primary);
       color: white;
@@ -230,26 +235,31 @@
       margin: 0;
     }
 
-    .rate-grid {
+    .currency-list {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: 1fr;
       gap: 10px;
+      margin-top: 14px;
     }
 
-    .rate-card {
+    .currency-card {
       background: #f9fafb;
       border: 1px solid var(--border);
       border-radius: 14px;
       padding: 12px;
     }
 
-    .rate-label {
+    .currency-top {
       display: flex;
       justify-content: space-between;
-      gap: 8px;
+      align-items: center;
+      gap: 10px;
       margin-bottom: 8px;
-      font-size: 14px;
-      font-weight: 800;
+    }
+
+    .currency-code {
+      font-weight: 900;
+      letter-spacing: 0.02em;
     }
 
     .result-section {
@@ -307,7 +317,7 @@
     }
 
     @media (max-width: 800px) {
-      .grid, .row, .rate-grid {
+      .grid, .row {
         grid-template-columns: 1fr;
       }
 
@@ -325,7 +335,7 @@
   <main class="page">
     <header>
       <h1>Trip Split Calculator</h1>
-      <p class="subtitle">Add people, add expenses in different currencies, then calculate the easiest settlement in one chosen currency.</p>
+      <p class="subtitle">Add people, add only the currencies you need, then calculate the easiest settlement in one chosen currency.</p>
     </header>
 
     <section class="grid">
@@ -338,7 +348,7 @@
         <div class="field">
           <label for="settlementCurrency">Settlement and export currency</label>
           <select id="settlementCurrency"></select>
-          <p class="muted">This is the currency used for final balances and who pays whom.</p>
+          <p class="muted">To settle in a new currency, add it first in the currency section.</p>
         </div>
         <div class="button-row">
           <button id="saveButton" class="btn-secondary">Save</button>
@@ -357,9 +367,20 @@
       </div>
 
       <div class="card full-width">
-        <h2>3. Exchange rates</h2>
-        <p class="muted">Enter rates only for currencies used by your expenses. Format: 1 expense currency = how much in the settlement currency.</p>
-        <div id="exchangeRatesList" class="rate-grid"></div>
+        <h2>3. Add currencies and exchange rates</h2>
+        <p class="muted">Only currencies you add will appear in the expense currency dropdown. Rate format: 1 added currency equals how much in the current settlement currency.</p>
+        <div class="row">
+          <div class="field">
+            <label for="newCurrencyCode">Currency code</label>
+            <input id="newCurrencyCode" type="text" maxlength="3" placeholder="CHF" />
+          </div>
+          <div class="field">
+            <label for="newCurrencyRate">Exchange rate to settlement currency</label>
+            <input id="newCurrencyRate" type="text" inputmode="decimal" placeholder="Example: 1.65 if 1 CHF = 1.65 CAD" />
+          </div>
+        </div>
+        <button id="addCurrencyButton" class="btn-primary">Add currency</button>
+        <div id="currencyList" class="currency-list"></div>
         <div class="warning">Exchange rates are manual in this free GitHub Pages version. Update them before using the final settlement for real payments.</div>
       </div>
 
@@ -416,26 +437,18 @@
   </main>
 
   <script>
-    const currencies = [
-      { code: 'CAD', label: 'Canadian Dollar' },
-      { code: 'USD', label: 'US Dollar' },
-      { code: 'EUR', label: 'Euro' },
-      { code: 'GBP', label: 'British Pound' },
-      { code: 'CHF', label: 'Swiss Franc' },
-      { code: 'JPY', label: 'Japanese Yen' },
-      { code: 'TWD', label: 'New Taiwan Dollar' },
-      { code: 'CNY', label: 'Chinese Yuan' }
-    ];
-
     let people = [];
     let expenses = [];
+    let userCurrencies = ['EUR'];
     let settlementCurrency = 'EUR';
     let exchangeRates = { EUR: 1 };
 
     const els = {
       tripName: document.getElementById('tripName'),
       settlementCurrency: document.getElementById('settlementCurrency'),
-      exchangeRatesList: document.getElementById('exchangeRatesList'),
+      newCurrencyCode: document.getElementById('newCurrencyCode'),
+      newCurrencyRate: document.getElementById('newCurrencyRate'),
+      currencyList: document.getElementById('currencyList'),
       personName: document.getElementById('personName'),
       peopleList: document.getElementById('peopleList'),
       expenseDescription: document.getElementById('expenseDescription'),
@@ -449,21 +462,43 @@
       saveButton: document.getElementById('saveButton'),
       clearAllButton: document.getElementById('clearAllButton'),
       addPersonButton: document.getElementById('addPersonButton'),
+      addCurrencyButton: document.getElementById('addCurrencyButton'),
       addExpenseButton: document.getElementById('addExpenseButton'),
       selectAllButton: document.getElementById('selectAllButton'),
       clearParticipantsButton: document.getElementById('clearParticipantsButton'),
       calculateButton: document.getElementById('calculateButton')
     };
 
-    function currencyOptionHtml(selectedCode = '') {
-      return currencies
-        .map(currency => `<option value="${currency.code}" ${currency.code === selectedCode ? 'selected' : ''}>${currency.code} · ${currency.label}</option>`)
-        .join('');
+    function normalizeCurrencyCode(value) {
+      return String(value).trim().toUpperCase();
+    }
+
+    function isValidCurrencyCode(code) {
+      if (!/^[A-Z]{3}$/.test(code)) return false;
+
+      try {
+        new Intl.NumberFormat('en-CA', { style: 'currency', currency: code }).format(1);
+        return true;
+      } catch {
+        return false;
+      }
     }
 
     function getCurrencyLabel(code) {
-      const found = currencies.find(currency => currency.code === code);
-      return found ? found.label : code;
+      try {
+        if (Intl.DisplayNames) {
+          const displayNames = new Intl.DisplayNames(['en'], { type: 'currency' });
+          return displayNames.of(code) || code;
+        }
+      } catch {}
+
+      return code;
+    }
+
+    function currencyOptionHtml(selectedCode = '') {
+      return userCurrencies
+        .map(code => `<option value="${code}" ${code === selectedCode ? 'selected' : ''}>${code} · ${escapeHtml(getCurrencyLabel(code))}</option>`)
+        .join('');
     }
 
     function formatMoney(cents, currencyCode = settlementCurrency) {
@@ -531,6 +566,54 @@
       renderAll();
     }
 
+    function addCurrency() {
+      const code = normalizeCurrencyCode(els.newCurrencyCode.value);
+      const rate = parseRate(els.newCurrencyRate.value);
+
+      if (!isValidCurrencyCode(code)) {
+        alert('Enter a valid 3 letter currency code, like EUR, CAD, CHF, or USD.');
+        return;
+      }
+
+      if (userCurrencies.includes(code)) {
+        alert('This currency already exists.');
+        return;
+      }
+
+      if (code !== settlementCurrency && rate === null) {
+        alert(`Enter the exchange rate: 1 ${code} equals how much ${settlementCurrency}.`);
+        return;
+      }
+
+      userCurrencies.push(code);
+      userCurrencies = sortCurrencies(userCurrencies);
+      exchangeRates[code] = code === settlementCurrency ? 1 : rate;
+      els.newCurrencyCode.value = '';
+      els.newCurrencyRate.value = '';
+      saveData();
+      renderAll();
+      if (expenses.length > 0) calculateResults();
+    }
+
+    function removeCurrency(code) {
+      if (code === settlementCurrency) {
+        alert('You cannot remove the current settlement currency. Change the settlement currency first.');
+        return;
+      }
+
+      const usedInExpense = expenses.some(expense => expense.currency === code);
+      if (usedInExpense) {
+        alert('This currency is used in an expense. Delete those expenses first.');
+        return;
+      }
+
+      userCurrencies = userCurrencies.filter(currency => currency !== code);
+      delete exchangeRates[code];
+      saveData();
+      renderAll();
+      if (expenses.length > 0) calculateResults();
+    }
+
     function addExpense() {
       if (people.length === 0) {
         alert('Add at least one person first.');
@@ -571,8 +654,6 @@
         paidBy,
         participants
       });
-
-      if (!(currency in exchangeRates)) exchangeRates[currency] = currency === settlementCurrency ? 1 : null;
 
       els.expenseDescription.value = '';
       els.expenseAmount.value = '';
@@ -816,24 +897,32 @@
     }
 
     function renderCurrencySelectors() {
+      userCurrencies = sortCurrencies([...new Set([...userCurrencies, settlementCurrency])]);
+      exchangeRates[settlementCurrency] = 1;
       els.settlementCurrency.innerHTML = currencyOptionHtml(settlementCurrency);
-      els.expenseCurrency.innerHTML = currencyOptionHtml(settlementCurrency);
+      els.expenseCurrency.innerHTML = currencyOptionHtml(els.expenseCurrency.value || settlementCurrency);
     }
 
-    function renderExchangeRates() {
-      els.exchangeRatesList.innerHTML = currencies.map(currency => {
-        const isSettlement = currency.code === settlementCurrency;
-        const value = isSettlement ? 1 : exchangeRates[currency.code] ?? '';
-        const placeholder = `1 ${currency.code} = ? ${settlementCurrency}`;
+    function renderCurrencyList() {
+      els.currencyList.innerHTML = userCurrencies.map(code => {
+        const isSettlement = code === settlementCurrency;
+        const isUsed = expenses.some(expense => expense.currency === code);
+        const value = isSettlement ? 1 : exchangeRates[code] ?? '';
+        const helpText = isSettlement
+          ? `Current settlement currency. Rate is always 1 ${code} = 1 ${code}.`
+          : `1 ${code} = this many ${settlementCurrency}.`;
 
         return `
-          <div class="rate-card">
-            <div class="rate-label">
-              <span>${currency.code}</span>
-              <span class="muted">${currency.label}</span>
+          <div class="currency-card">
+            <div class="currency-top">
+              <div>
+                <div class="currency-code">${code}</div>
+                <div class="muted">${escapeHtml(getCurrencyLabel(code))}</div>
+              </div>
+              <button class="btn-danger btn-small remove-currency-button" data-currency="${code}" ${isSettlement || isUsed ? 'disabled' : ''}>Remove</button>
             </div>
-            <input class="exchange-rate-input" data-currency="${currency.code}" type="text" inputmode="decimal" value="${escapeAttr(value)}" placeholder="${placeholder}" ${isSettlement ? 'disabled' : ''} />
-            <p class="muted">1 ${currency.code} = this many ${settlementCurrency}</p>
+            <input class="exchange-rate-input" data-currency="${code}" type="text" inputmode="decimal" value="${escapeAttr(value)}" ${isSettlement ? 'disabled' : ''} />
+            <p class="muted">${helpText}${isUsed && !isSettlement ? ' This currency is used in expenses.' : ''}</p>
           </div>
         `;
       }).join('');
@@ -866,7 +955,7 @@
 
     function renderAll() {
       renderCurrencySelectors();
-      renderExchangeRates();
+      renderCurrencyList();
       renderPeople();
       renderPayerOptions();
       renderParticipantChecks();
@@ -885,6 +974,7 @@
       const data = {
         tripName: els.tripName.value,
         settlementCurrency,
+        userCurrencies,
         exchangeRates,
         people,
         expenses
@@ -901,7 +991,6 @@
         els.tripName.value = data.tripName || '';
         settlementCurrency = data.settlementCurrency || guessCurrencyFromOldSymbol(data.currencySymbol) || 'EUR';
         exchangeRates = data.exchangeRates || { [settlementCurrency]: 1 };
-        exchangeRates[settlementCurrency] = 1;
         people = Array.isArray(data.people) ? data.people : [];
         expenses = Array.isArray(data.expenses) ? data.expenses.map(expense => ({
           id: expense.id || String(Date.now()) + Math.random(),
@@ -911,9 +1000,17 @@
           paidBy: expense.paidBy,
           participants: Array.isArray(expense.participants) ? expense.participants : []
         })) : [];
+
+        const currenciesFromExpenses = expenses.map(expense => expense.currency).filter(Boolean);
+        const currenciesFromRates = Object.keys(exchangeRates || {}).filter(isValidCurrencyCode);
+        const storedCurrencies = Array.isArray(data.userCurrencies) ? data.userCurrencies.filter(isValidCurrencyCode) : [];
+
+        userCurrencies = sortCurrencies([...new Set([settlementCurrency, ...storedCurrencies, ...currenciesFromExpenses, ...currenciesFromRates])]);
+        exchangeRates[settlementCurrency] = 1;
       } catch {
         people = [];
         expenses = [];
+        userCurrencies = ['EUR'];
         settlementCurrency = 'EUR';
         exchangeRates = { EUR: 1 };
       }
@@ -928,11 +1025,12 @@
     }
 
     function clearAllData() {
-      const confirmed = confirm('Clear all people, expenses, exchange rates, and saved data?');
+      const confirmed = confirm('Clear all people, expenses, currencies, exchange rates, and saved data?');
       if (!confirmed) return;
 
       people = [];
       expenses = [];
+      userCurrencies = ['EUR'];
       settlementCurrency = 'EUR';
       exchangeRates = { EUR: 1 };
       els.tripName.value = '';
@@ -947,26 +1045,37 @@
       if (newCurrency === oldCurrency) return;
 
       const oldRateForNewCurrency = parseRate(exchangeRates[newCurrency]);
+      if (newCurrency !== oldCurrency && oldRateForNewCurrency === null) {
+        alert(`Add a valid rate for ${newCurrency} before using it as the settlement currency.`);
+        renderCurrencySelectors();
+        return;
+      }
+
       const oldRates = { ...exchangeRates };
       settlementCurrency = newCurrency;
+      exchangeRates = {};
 
-      if (oldRateForNewCurrency !== null) {
-        exchangeRates = {};
-        currencies.forEach(currency => {
-          if (currency.code === settlementCurrency) {
-            exchangeRates[currency.code] = 1;
-          } else {
-            const oldRate = parseRate(oldRates[currency.code]);
-            exchangeRates[currency.code] = oldRate === null ? null : Number((oldRate / oldRateForNewCurrency).toFixed(8));
-          }
-        });
-      } else {
-        exchangeRates = { [settlementCurrency]: 1 };
-      }
+      userCurrencies.forEach(code => {
+        if (code === settlementCurrency) {
+          exchangeRates[code] = 1;
+        } else {
+          const oldRate = code === oldCurrency ? 1 : parseRate(oldRates[code]);
+          exchangeRates[code] = oldRate === null ? null : Number((oldRate / oldRateForNewCurrency).toFixed(8));
+        }
+      });
 
       saveData();
       renderAll();
       if (expenses.length > 0) calculateResults();
+    }
+
+    function sortCurrencies(codes) {
+      const uniqueValidCodes = [...new Set(codes.map(normalizeCurrencyCode).filter(isValidCurrencyCode))];
+      return uniqueValidCodes.sort((a, b) => {
+        if (a === settlementCurrency) return -1;
+        if (b === settlementCurrency) return 1;
+        return a.localeCompare(b);
+      });
     }
 
     function escapeHtml(value) {
@@ -985,6 +1094,7 @@
     els.saveButton.addEventListener('click', saveData);
     els.clearAllButton.addEventListener('click', clearAllData);
     els.addPersonButton.addEventListener('click', addPerson);
+    els.addCurrencyButton.addEventListener('click', addCurrency);
     els.addExpenseButton.addEventListener('click', addExpense);
     els.selectAllButton.addEventListener('click', selectAllParticipants);
     els.clearParticipantsButton.addEventListener('click', clearParticipants);
@@ -996,6 +1106,18 @@
       if (event.key === 'Enter') addPerson();
     });
 
+    els.newCurrencyCode.addEventListener('input', event => {
+      event.target.value = normalizeCurrencyCode(event.target.value);
+    });
+
+    els.newCurrencyCode.addEventListener('keydown', event => {
+      if (event.key === 'Enter') addCurrency();
+    });
+
+    els.newCurrencyRate.addEventListener('keydown', event => {
+      if (event.key === 'Enter') addCurrency();
+    });
+
     els.expenseAmount.addEventListener('keydown', event => {
       if (event.key === 'Enter') addExpense();
     });
@@ -1004,13 +1126,18 @@
       handleSettlementCurrencyChange(event.target.value);
     });
 
-    els.exchangeRatesList.addEventListener('input', event => {
+    els.currencyList.addEventListener('input', event => {
       if (!event.target.classList.contains('exchange-rate-input')) return;
       const currency = event.target.dataset.currency;
       exchangeRates[currency] = currency === settlementCurrency ? 1 : event.target.value.trim();
       saveData();
       renderExpenses();
       if (expenses.length > 0) calculateResults();
+    });
+
+    els.currencyList.addEventListener('click', event => {
+      if (!event.target.classList.contains('remove-currency-button')) return;
+      removeCurrency(event.target.dataset.currency);
     });
 
     els.peopleList.addEventListener('click', event => {
