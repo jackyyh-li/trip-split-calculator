@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Trip Split Calculator</title>
+  <title>Split Calculator</title>
   <style>
     :root {
       --bg: #f6f7fb;
@@ -457,8 +457,8 @@
 <body>
   <main class="page">
     <header>
-      <h1>Trip Split Calculator</h1>
-      <p class="subtitle">Add people, add only the currencies you need, then calculate the easiest settlement in one chosen currency.</p>
+      <h1>Split Calculator</h1>
+      <p class="subtitle">Split shared expenses and see who should pay whom.</p>
     </header>
 
     <section class="grid">
@@ -466,7 +466,7 @@
         <h2>1. Trip settings</h2>
         <div class="field">
           <label for="tripName">Trip name</label>
-          <input id="tripName" type="text" placeholder="Europe Trip" />
+          <input id="tripName" type="text" placeholder="Trip name" />
         </div>
         <div class="field">
           <label for="settlementCurrency">Settlement and export currency</label>
@@ -483,7 +483,7 @@
         <h2>2. Add people</h2>
         <div class="field">
           <label for="personName">Person name</label>
-          <input id="personName" type="text" placeholder="Jacky" />
+          <input id="personName" type="text" placeholder="Name" />
         </div>
         <button id="addPersonButton" class="btn-primary">Add person</button>
         <div id="peopleList" class="list"></div>
@@ -491,20 +491,20 @@
 
       <div class="card full-width">
         <h2>3. Add currencies and exchange rates</h2>
-        <p class="muted">Only currencies you add will appear in the expense currency dropdown. Rate format: 1 added currency equals how much in the current settlement currency.</p>
+        <p class="muted">Add only the currencies you need. Enter each rate against the settlement currency.</p>
         <div class="row">
           <div class="field">
             <label for="newCurrencyCode">Currency code</label>
-            <input id="newCurrencyCode" type="text" maxlength="3" placeholder="CHF" />
+            <input id="newCurrencyCode" type="text" maxlength="3" placeholder="USD" />
           </div>
           <div class="field">
             <label for="newCurrencyRate">Exchange rate to settlement currency</label>
-            <input id="newCurrencyRate" type="text" inputmode="decimal" placeholder="Example: 1.65 if 1 CHF = 1.65 CAD" />
+            <input id="newCurrencyRate" type="text" inputmode="decimal" placeholder="Example: 1.35" />
           </div>
         </div>
         <button id="addCurrencyButton" class="btn-primary">Add currency</button>
         <div id="currencyList" class="currency-list"></div>
-        <div class="warning">Exchange rates are manual in this free GitHub Pages version. Update them before using the final settlement for real payments.</div>
+        <div class="warning">Exchange rates are manual. Check them before settling real payments.</div>
       </div>
 
       <div class="card full-width">
@@ -512,7 +512,7 @@
         <div class="row">
           <div class="field">
             <label for="expenseDescription">Description</label>
-            <input id="expenseDescription" type="text" placeholder="Hotel, dinner, train ticket" />
+            <input id="expenseDescription" type="text" placeholder="Description" />
           </div>
           <div class="field">
             <label for="expenseAmount">Amount</label>
@@ -557,7 +557,7 @@
 
       <div class="card full-width">
         <h2>7. Export summary</h2>
-        <p class="muted">Preview the summary below. Use the copy button to share the plain text version.</p>
+        <p class="muted">Preview the result and copy the text summary.</p>
         <div class="button-row">
           <button id="copySummaryButton" class="btn-primary">Copy summary text</button>
           <button id="toggleRawTextButton" class="btn-secondary">Show raw text</button>
@@ -983,7 +983,7 @@
     }
 
     function buildExportText(balances, settlements, totalsByCurrency, totalSettlementCents) {
-      const tripName = els.tripName.value.trim() || 'Trip';
+      const tripName = els.tripName.value.trim() || 'Shared Expenses';
       const lines = [];
       const usedCurrencies = getUsedCurrencies();
       const expenseDates = expenses.map(expense => expense.date).filter(Boolean).sort();
@@ -1044,7 +1044,7 @@
     }
 
     function buildExportPreview(balances, settlements, totalsByCurrency, totalSettlementCents) {
-      const tripName = els.tripName.value.trim() || 'Trip';
+      const tripName = els.tripName.value.trim() || 'Shared Expenses';
       const expenseDates = expenses.map(expense => expense.date).filter(Boolean).sort();
       const usedCurrencies = getUsedCurrencies();
 
