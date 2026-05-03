@@ -316,8 +316,122 @@
       padding: 12px 0;
     }
 
+    .export-preview {
+      margin-top: 14px;
+      background: #f9fafb;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+    }
+
+    .export-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .export-title {
+      font-size: 22px;
+      font-weight: 900;
+      margin-bottom: 4px;
+    }
+
+    .export-subtitle {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .summary-stat {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+    }
+
+    .summary-stat-label {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+
+    .summary-stat-value {
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .export-section {
+      margin-top: 18px;
+    }
+
+    .export-card-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .export-row-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .export-row-left {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .export-main {
+      font-weight: 800;
+    }
+
+    .export-sub {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .export-amount {
+      font-weight: 900;
+      text-align: right;
+    }
+
+    .export-chip-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .export-chip {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    #exportBox {
+      margin-top: 14px;
+      display: none;
+    }
+
     @media (max-width: 800px) {
-      .grid, .row {
+      .grid, .row, .summary-grid {
         grid-template-columns: 1fr;
       }
 
@@ -327,6 +441,15 @@
 
       .participants {
         grid-template-columns: 1fr;
+      }
+
+      .export-row-card {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .export-amount {
+        text-align: left;
       }
     }
   </style>
@@ -434,8 +557,15 @@
 
       <div class="card full-width">
         <h2>7. Export summary</h2>
-        <p class="muted">The export uses the settlement currency chosen in Trip settings.</p>
-        <textarea id="exportBox" readonly placeholder="Your summary will appear here after calculation."></textarea>
+        <p class="muted">Preview the summary below. Use the copy button to share the plain text version.</p>
+        <div class="button-row">
+          <button id="copySummaryButton" class="btn-primary">Copy summary text</button>
+          <button id="toggleRawTextButton" class="btn-secondary">Show raw text</button>
+        </div>
+        <div id="exportPreview" class="export-preview">
+          <div class="empty">Your summary will appear here after calculation.</div>
+        </div>
+        <textarea id="exportBox" readonly placeholder="Raw export text will appear here."></textarea>
       </div>
     </section>
   </main>
@@ -463,7 +593,10 @@
       participantChecks: document.getElementById('participantChecks'),
       expenseList: document.getElementById('expenseList'),
       results: document.getElementById('results'),
+      exportPreview: document.getElementById('exportPreview'),
       exportBox: document.getElementById('exportBox'),
+      copySummaryButton: document.getElementById('copySummaryButton'),
+      toggleRawTextButton: document.getElementById('toggleRawTextButton'),
       saveButton: document.getElementById('saveButton'),
       clearAllButton: document.getElementById('clearAllButton'),
       addPersonButton: document.getElementById('addPersonButton'),
@@ -728,6 +861,7 @@
       if (people.length === 0) {
         els.results.innerHTML = '<div class="empty">Add people first.</div>';
         els.exportBox.value = '';
+        els.exportPreview.innerHTML = '<div class="empty">Your summary will appear here after calculation.</div>';
         return;
       }
 
@@ -735,6 +869,7 @@
       if (missingRates.length > 0) {
         els.results.innerHTML = `<div class="warning">Missing exchange rate: ${missingRates.join(', ')} to ${settlementCurrency}. Add the rate first, then calculate again.</div>`;
         els.exportBox.value = '';
+        els.exportPreview.innerHTML = '<div class="empty">Your summary will appear here after calculation.</div>';
         return;
       }
 
@@ -763,6 +898,7 @@
       const settlements = simplifySettlements(balances);
       renderResults(balances, settlements, totalsByCurrency, totalSettlementCents);
       buildExportText(balances, settlements, totalsByCurrency, totalSettlementCents);
+      buildExportPreview(balances, settlements, totalsByCurrency, totalSettlementCents);
     }
 
     function simplifySettlements(balances) {
@@ -850,8 +986,15 @@
       const tripName = els.tripName.value.trim() || 'Trip';
       const lines = [];
       const usedCurrencies = getUsedCurrencies();
+      const expenseDates = expenses.map(expense => expense.date).filter(Boolean).sort();
+      const dateRange = expenseDates.length
+        ? `${formatDateForDisplay(expenseDates[0])} to ${formatDateForDisplay(expenseDates[expenseDates.length - 1])}`
+        : 'No dates';
 
       lines.push(`${tripName} expense summary`);
+      lines.push(`Trip dates: ${dateRange}`);
+      lines.push(`People: ${people.length}`);
+      lines.push(`Expenses: ${expenses.length}`);
       lines.push(`Settlement currency: ${settlementCurrency} (${getCurrencyLabel(settlementCurrency)})`);
       lines.push(`Total spent in settlement currency: ${formatMoney(totalSettlementCents, settlementCurrency)}`);
       lines.push('');
@@ -898,6 +1041,116 @@
       }
 
       els.exportBox.value = lines.join('\n');
+    }
+
+    function buildExportPreview(balances, settlements, totalsByCurrency, totalSettlementCents) {
+      const tripName = els.tripName.value.trim() || 'Trip';
+      const expenseDates = expenses.map(expense => expense.date).filter(Boolean).sort();
+      const usedCurrencies = getUsedCurrencies();
+
+      const dateRange = expenseDates.length
+        ? `${formatDateForDisplay(expenseDates[0])} to ${formatDateForDisplay(expenseDates[expenseDates.length - 1])}`
+        : 'No dates';
+
+      const totalsHtml = Object.entries(totalsByCurrency).length
+        ? Object.entries(totalsByCurrency)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([currency, cents]) => `<div class="export-chip">${currency}: ${formatMoney(cents, currency)}</div>`)
+          .join('')
+        : '<div class="empty">No expenses yet.</div>';
+
+      const ratesHtml = usedCurrencies.some(currency => currency !== settlementCurrency)
+        ? usedCurrencies
+          .filter(currency => currency !== settlementCurrency)
+          .map(currency => `<div class="export-chip">1 ${currency} = ${escapeHtml(exchangeRates[currency])} ${settlementCurrency}</div>`)
+          .join('')
+        : '<div class="empty">No exchange rates needed.</div>';
+
+      const balancesHtml = Object.entries(balances).length
+        ? Object.entries(balances)
+          .map(([person, balanceCents]) => {
+            let status = 'Settled';
+            let className = 'neutral';
+
+            if (balanceCents > 0) {
+              status = `Gets back ${formatMoney(balanceCents, settlementCurrency)}`;
+              className = 'positive';
+            } else if (balanceCents < 0) {
+              status = `Owes ${formatMoney(Math.abs(balanceCents), settlementCurrency)}`;
+              className = 'negative';
+            }
+
+            return `
+              <div class="export-row-card">
+                <div class="export-row-left">
+                  <div class="export-main">${escapeHtml(person)}</div>
+                  <div class="export-sub">Balance</div>
+                </div>
+                <div class="export-amount ${className}">${status}</div>
+              </div>
+            `;
+          })
+          .join('')
+        : '<div class="empty">No balances yet.</div>';
+
+      const settlementsHtml = settlements.length
+        ? settlements
+          .map(item => `
+            <div class="export-row-card">
+              <div class="export-row-left">
+                <div class="export-main">${escapeHtml(item.from)} pays ${escapeHtml(item.to)}</div>
+                <div class="export-sub">Final settlement</div>
+              </div>
+              <div class="export-amount">${formatMoney(item.amountCents, settlementCurrency)}</div>
+            </div>
+          `)
+          .join('')
+        : '<div class="empty">No payments needed.</div>';
+
+      els.exportPreview.innerHTML = `
+        <div class="export-header">
+          <div>
+            <div class="export-title">${escapeHtml(tripName)} Summary</div>
+            <div class="export-subtitle">Settlement currency: ${settlementCurrency} (${escapeHtml(getCurrencyLabel(settlementCurrency))})</div>
+          </div>
+          <div class="export-subtitle">Trip dates: ${dateRange}</div>
+        </div>
+
+        <div class="summary-grid">
+          <div class="summary-stat">
+            <div class="summary-stat-label">People</div>
+            <div class="summary-stat-value">${people.length}</div>
+          </div>
+          <div class="summary-stat">
+            <div class="summary-stat-label">Expenses</div>
+            <div class="summary-stat-value">${expenses.length}</div>
+          </div>
+          <div class="summary-stat">
+            <div class="summary-stat-label">Total spent</div>
+            <div class="summary-stat-value">${formatMoney(totalSettlementCents, settlementCurrency)}</div>
+          </div>
+        </div>
+
+        <div class="export-section">
+          <h3>Original totals by currency</h3>
+          <div class="export-chip-wrap">${totalsHtml}</div>
+        </div>
+
+        <div class="export-section">
+          <h3>Exchange rates used</h3>
+          <div class="export-chip-wrap">${ratesHtml}</div>
+        </div>
+
+        <div class="export-section">
+          <h3>Balance by person</h3>
+          <div class="export-card-list">${balancesHtml}</div>
+        </div>
+
+        <div class="export-section">
+          <h3>Easiest settlement</h3>
+          <div class="export-card-list">${settlementsHtml}</div>
+        </div>
+      `;
     }
 
     function renderPeople() {
@@ -1071,6 +1324,7 @@
       els.expenseDate.value = getTodayDateString();
       els.results.innerHTML = '';
       els.exportBox.value = '';
+      els.exportPreview.innerHTML = '<div class="empty">Your summary will appear here after calculation.</div>';
       localStorage.removeItem('tripSplitCalculatorData');
       renderAll();
     }
@@ -1104,6 +1358,34 @@
       if (expenses.length > 0) calculateResults();
     }
 
+    function copySummaryText() {
+      if (!els.exportBox.value.trim()) {
+        alert('Calculate the split first.');
+        return;
+      }
+
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(els.exportBox.value)
+          .then(() => alert('Summary copied.'))
+          .catch(() => fallbackCopySummaryText());
+      } else {
+        fallbackCopySummaryText();
+      }
+    }
+
+    function fallbackCopySummaryText() {
+      els.exportBox.style.display = 'block';
+      els.exportBox.select();
+      document.execCommand('copy');
+      alert('Summary copied.');
+    }
+
+    function toggleRawText() {
+      const isHidden = els.exportBox.style.display === 'none' || els.exportBox.style.display === '';
+      els.exportBox.style.display = isHidden ? 'block' : 'none';
+      els.toggleRawTextButton.textContent = isHidden ? 'Hide raw text' : 'Show raw text';
+    }
+
     function escapeHtml(value) {
       return String(value)
         .replaceAll('&', '&amp;')
@@ -1125,6 +1407,8 @@
     els.selectAllButton.addEventListener('click', selectAllParticipants);
     els.clearParticipantsButton.addEventListener('click', clearParticipants);
     els.calculateButton.addEventListener('click', calculateResults);
+    els.copySummaryButton.addEventListener('click', copySummaryText);
+    els.toggleRawTextButton.addEventListener('click', toggleRawText);
 
     els.tripName.addEventListener('input', saveData);
 
