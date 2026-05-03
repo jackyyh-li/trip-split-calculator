@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trip Split Calculator</title>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --danger: #dc2626;
+      --success: #15803d;
+      --shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+      --radius: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .page {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px 18px 60px;
+    }
+
+    header {
+      margin-bottom: 24px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 34px;
+      letter-spacing: -0.03em;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+    }
+
+    .card h2 {
+      margin: 0 0 14px;
+      font-size: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 15px;
+      background: white;
+      color: var(--text);
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: 2px solid rgba(37, 99, 235, 0.2);
+      border-color: var(--primary);
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .field {
+      margin-bottom: 12px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 11px 14px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.08s ease, background 0.2s ease;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+    }
+
+    .btn-secondary {
+      background: #eef2ff;
+      color: #1e40af;
+    }
+
+    .btn-danger {
+      background: #fee2e2;
+      color: var(--danger);
+    }
+
+    .btn-small {
+      padding: 7px 10px;
+      font-size: 13px;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .person-pill {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f9fafb;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 10px 12px;
+    }
+
+    .expense-item {
+      background: #f9fafb;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+    }
+
+    .expense-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .expense-title {
+      font-weight: 800;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .participants {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .check-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #f9fafb;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 9px;
+      font-size: 14px;
+    }
+
+    .check-row input {
+      width: auto;
+      margin: 0;
+    }
+
+    .result-section {
+      margin-top: 18px;
+    }
+
+    .balance-row, .settlement-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .balance-row:last-child, .settlement-row:last-child {
+      border-bottom: 0;
+    }
+
+    .positive {
+      color: var(--success);
+      font-weight: 800;
+    }
+
+    .negative {
+      color: var(--danger);
+      font-weight: 800;
+    }
+
+    .neutral {
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .full-width {
+      grid-column: 1 / -1;
+    }
+
+    .summary-box {
+      background: #f9fafb;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      margin-top: 12px;
+    }
+
+    textarea {
+      min-height: 170px;
+      resize: vertical;
+    }
+
+    .empty {
+      color: var(--muted);
+      font-style: italic;
+      padding: 12px 0;
+    }
+
+    @media (max-width: 800px) {
+      .grid, .row {
+        grid-template-columns: 1fr;
+      }
+
+      h1 {
+        font-size: 28px;
+      }
+
+      .participants {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <h1>Trip Split Calculator</h1>
+      <p class="subtitle">Add people, add expenses, choose participants, then calculate the easiest way to pay each other back.</p>
+    </header>
+
+    <section class="grid">
+      <div class="card">
+        <h2>1. Trip settings</h2>
+        <div class="field">
+          <label for="tripName">Trip name</label>
+          <input id="tripName" type="text" placeholder="Europe Trip" />
+        </div>
+        <div class="field">
+          <label for="currencySymbol">Currency symbol</label>
+          <input id="currencySymbol" type="text" value="€" maxlength="4" />
+        </div>
+        <div class="button-row">
+          <button class="btn-secondary" onclick="saveData()">Save</button>
+          <button class="btn-danger" onclick="clearAllData()">Clear all</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>2. Add people</h2>
+        <div class="field">
+          <label for="personName">Person name</label>
+          <input id="personName" type="text" placeholder="Jacky" />
+        </div>
+        <button class="btn-primary" onclick="addPerson()">Add person</button>
+        <div id="peopleList" class="list"></div>
+      </div>
+
+      <div class="card full-width">
+        <h2>3. Add expense</h2>
+        <div class="row">
+          <div class="field">
+            <label for="expenseDescription">Description</label>
+            <input id="expenseDescription" type="text" placeholder="Hotel, dinner, train ticket" />
+          </div>
+          <div class="field">
+            <label for="expenseAmount">Amount</label>
+            <input id="expenseAmount" type="number" min="0" step="0.01" placeholder="120.00" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="paidBy">Paid by</label>
+          <select id="paidBy"></select>
+        </div>
+        <div class="field">
+          <label>Who participated in this expense?</label>
+          <div class="button-row">
+            <button class="btn-secondary btn-small" onclick="selectAllParticipants()">Select all</button>
+            <button class="btn-secondary btn-small" onclick="clearParticipants()">Clear</button>
+          </div>
+          <div id="participantChecks" class="participants"></div>
+        </div>
+        <button class="btn-primary" onclick="addExpense()">Add expense</button>
+      </div>
+
+      <div class="card full-width">
+        <h2>4. Expenses</h2>
+        <div id="expenseList" class="list"></div>
+      </div>
+
+      <div class="card full-width">
+        <h2>5. Results</h2>
+        <button class="btn-primary" onclick="calculateResults()">Calculate split</button>
+        <div id="results" class="result-section"></div>
+      </div>
+
+      <div class="card full-width">
+        <h2>6. Export summary</h2>
+        <p class="muted">Copy this result and send it to your friends.</p>
+        <textarea id="exportBox" readonly placeholder="Your summary will appear here after calculation."></textarea>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    let people = [];
+    let expenses = [];
+
+    const els = {
+      tripName: document.getElementById('tripName'),
+      currencySymbol: document.getElementById('currencySymbol'),
+      personName: document.getElementById('personName'),
+      peopleList: document.getElementById('peopleList'),
+      expenseDescription: document.getElementById('expenseDescription'),
+      expenseAmount: document.getElementById('expenseAmount'),
+      paidBy: document.getElementById('paidBy'),
+      participantChecks: document.getElementById('participantChecks'),
+      expenseList: document.getElementById('expenseList'),
+      results: document.getElementById('results'),
+      exportBox: document.getElementById('exportBox')
+    };
+
+    function money(value) {
+      const symbol = els.currencySymbol.value || '$';
+      return `${symbol}${Number(value).toFixed(2)}`;
+    }
+
+    function normalizeName(name) {
+      return name.trim().replace(/\s+/g, ' ');
+    }
+
+    function addPerson() {
+      const name = normalizeName(els.personName.value);
+      if (!name) {
+        alert('Enter a person name.');
+        return;
+      }
+
+      if (people.some(person => person.toLowerCase() === name.toLowerCase())) {
+        alert('This person already exists.');
+        return;
+      }
+
+      people.push(name);
+      els.personName.value = '';
+      saveData();
+      renderAll();
+    }
+
+    function removePerson(name) {
+      const usedInExpense = expenses.some(expense => expense.paidBy === name || expense.participants.includes(name));
+      if (usedInExpense) {
+        alert('This person is used in an expense. Delete related expenses first.');
+        return;
+      }
+
+      people = people.filter(person => person !== name);
+      saveData();
+      renderAll();
+    }
+
+    function addExpense() {
+      if (people.length === 0) {
+        alert('Add at least one person first.');
+        return;
+      }
+
+      const description = els.expenseDescription.value.trim() || 'Untitled expense';
+      const amount = Number(els.expenseAmount.value);
+      const paidBy = els.paidBy.value;
+      const participants = Array.from(document.querySelectorAll('.participant-check:checked')).map(input => input.value);
+
+      if (!amount || amount <= 0) {
+        alert('Enter a valid amount.');
+        return;
+      }
+
+      if (!paidBy) {
+        alert('Choose who paid.');
+        return;
+      }
+
+      if (participants.length === 0) {
+        alert('Choose at least one participant.');
+        return;
+      }
+
+      expenses.push({
+        id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+        description,
+        amount,
+        paidBy,
+        participants
+      });
+
+      els.expenseDescription.value = '';
+      els.expenseAmount.value = '';
+      selectAllParticipants();
+      saveData();
+      renderAll();
+      calculateResults();
+    }
+
+    function deleteExpense(id) {
+      expenses = expenses.filter(expense => expense.id !== id);
+      saveData();
+      renderAll();
+      calculateResults();
+    }
+
+    function calculateResults() {
+      if (people.length === 0) {
+        els.results.innerHTML = '<div class="empty">Add people first.</div>';
+        return;
+      }
+
+      const balances = Object.fromEntries(people.map(person => [person, 0]));
+      let totalSpent = 0;
+
+      expenses.forEach(expense => {
+        totalSpent += expense.amount;
+        balances[expense.paidBy] += expense.amount;
+        const share = expense.amount / expense.participants.length;
+        expense.participants.forEach(person => {
+          balances[person] -= share;
+        });
+      });
+
+      const settlements = simplifySettlements(balances);
+      renderResults(balances, settlements, totalSpent);
+      buildExportText(balances, settlements, totalSpent);
+    }
+
+    function simplifySettlements(balances) {
+      const creditors = [];
+      const debtors = [];
+
+      Object.entries(balances).forEach(([person, balance]) => {
+        const rounded = Math.round(balance * 100) / 100;
+        if (rounded > 0) creditors.push({ person, amount: rounded });
+        if (rounded < 0) debtors.push({ person, amount: Math.abs(rounded) });
+      });
+
+      creditors.sort((a, b) => b.amount - a.amount);
+      debtors.sort((a, b) => b.amount - a.amount);
+
+      const settlements = [];
+      let i = 0;
+      let j = 0;
+
+      while (i < debtors.length && j < creditors.length) {
+        const payment = Math.min(debtors[i].amount, creditors[j].amount);
+        const roundedPayment = Math.round(payment * 100) / 100;
+
+        if (roundedPayment > 0) {
+          settlements.push({
+            from: debtors[i].person,
+            to: creditors[j].person,
+            amount: roundedPayment
+          });
+        }
+
+        debtors[i].amount = Math.round((debtors[i].amount - payment) * 100) / 100;
+        creditors[j].amount = Math.round((creditors[j].amount - payment) * 100) / 100;
+
+        if (debtors[i].amount <= 0) i++;
+        if (creditors[j].amount <= 0) j++;
+      }
+
+      return settlements;
+    }
+
+    function renderResults(balances, settlements, totalSpent) {
+      const balanceHtml = Object.entries(balances)
+        .map(([person, balance]) => {
+          const rounded = Math.round(balance * 100) / 100;
+          let className = 'neutral';
+          let label = 'settled';
+
+          if (rounded > 0) {
+            className = 'positive';
+            label = `gets back ${money(rounded)}`;
+          } else if (rounded < 0) {
+            className = 'negative';
+            label = `owes ${money(Math.abs(rounded))}`;
+          }
+
+          return `<div class="balance-row"><span>${escapeHtml(person)}</span><span class="${className}">${label}</span></div>`;
+        })
+        .join('');
+
+      const settlementHtml = settlements.length
+        ? settlements.map(item => `<div class="settlement-row"><span>${escapeHtml(item.from)} pays ${escapeHtml(item.to)}</span><strong>${money(item.amount)}</strong></div>`).join('')
+        : '<div class="empty">No payments needed.</div>';
+
+      els.results.innerHTML = `
+        <div class="summary-box"><strong>Total spent:</strong> ${money(totalSpent)}</div>
+        <div class="result-section">
+          <h3>Balance by person</h3>
+          ${balanceHtml || '<div class="empty">No balances yet.</div>'}
+        </div>
+        <div class="result-section">
+          <h3>Easiest settlement</h3>
+          ${settlementHtml}
+        </div>
+      `;
+    }
+
+    function buildExportText(balances, settlements, totalSpent) {
+      const tripName = els.tripName.value.trim() || 'Trip';
+      const lines = [];
+      lines.push(`${tripName} expense summary`);
+      lines.push(`Total spent: ${money(totalSpent)}`);
+      lines.push('');
+      lines.push('Balance by person:');
+
+      Object.entries(balances).forEach(([person, balance]) => {
+        const rounded = Math.round(balance * 100) / 100;
+        if (rounded > 0) lines.push(`${person} gets back ${money(rounded)}`);
+        else if (rounded < 0) lines.push(`${person} owes ${money(Math.abs(rounded))}`);
+        else lines.push(`${person} is settled`);
+      });
+
+      lines.push('');
+      lines.push('Easiest settlement:');
+
+      if (settlements.length === 0) {
+        lines.push('No payments needed.');
+      } else {
+        settlements.forEach(item => {
+          lines.push(`${item.from} pays ${item.to}: ${money(item.amount)}`);
+        });
+      }
+
+      els.exportBox.value = lines.join('\n');
+    }
+
+    function renderPeople() {
+      els.peopleList.innerHTML = people.length
+        ? people.map(person => `
+          <div class="person-pill">
+            <strong>${escapeHtml(person)}</strong>
+            <button class="btn-danger btn-small" onclick="removePerson('${escapeAttr(person)}')">Remove</button>
+          </div>
+        `).join('')
+        : '<div class="empty">No people added yet.</div>';
+    }
+
+    function renderPayerOptions() {
+      els.paidBy.innerHTML = people.length
+        ? people.map(person => `<option value="${escapeAttr(person)}">${escapeHtml(person)}</option>`).join('')
+        : '<option value="">Add people first</option>';
+    }
+
+    function renderParticipantChecks() {
+      els.participantChecks.innerHTML = people.length
+        ? people.map(person => `
+          <label class="check-row">
+            <input class="participant-check" type="checkbox" value="${escapeAttr(person)}" checked />
+            ${escapeHtml(person)}
+          </label>
+        `).join('')
+        : '<div class="empty">Add people first.</div>';
+    }
+
+    function renderExpenses() {
+      els.expenseList.innerHTML = expenses.length
+        ? expenses.map(expense => `
+          <div class="expense-item">
+            <div class="expense-top">
+              <div>
+                <div class="expense-title">${escapeHtml(expense.description)}</div>
+                <div class="muted">Paid by ${escapeHtml(expense.paidBy)} · Split between ${expense.participants.map(escapeHtml).join(', ')}</div>
+              </div>
+              <div><strong>${money(expense.amount)}</strong></div>
+            </div>
+            <button class="btn-danger btn-small" onclick="deleteExpense('${expense.id}')">Delete</button>
+          </div>
+        `).join('')
+        : '<div class="empty">No expenses added yet.</div>';
+    }
+
+    function renderAll() {
+      renderPeople();
+      renderPayerOptions();
+      renderParticipantChecks();
+      renderExpenses();
+    }
+
+    function selectAllParticipants() {
+      document.querySelectorAll('.participant-check').forEach(input => input.checked = true);
+    }
+
+    function clearParticipants() {
+      document.querySelectorAll('.participant-check').forEach(input => input.checked = false);
+    }
+
+    function saveData() {
+      const data = {
+        tripName: els.tripName.value,
+        currencySymbol: els.currencySymbol.value,
+        people,
+        expenses
+      };
+      localStorage.setItem('tripSplitCalculatorData', JSON.stringify(data));
+    }
+
+    function loadData() {
+      const raw = localStorage.getItem('tripSplitCalculatorData');
+      if (!raw) return;
+
+      try {
+        const data = JSON.parse(raw);
+        els.tripName.value = data.tripName || '';
+        els.currencySymbol.value = data.currencySymbol || '€';
+        people = Array.isArray(data.people) ? data.people : [];
+        expenses = Array.isArray(data.expenses) ? data.expenses : [];
+      } catch {
+        people = [];
+        expenses = [];
+      }
+    }
+
+    function clearAllData() {
+      const confirmed = confirm('Clear all people, expenses, and saved data?');
+      if (!confirmed) return;
+
+      people = [];
+      expenses = [];
+      els.tripName.value = '';
+      els.currencySymbol.value = '€';
+      els.results.innerHTML = '';
+      els.exportBox.value = '';
+      localStorage.removeItem('tripSplitCalculatorData');
+      renderAll();
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    function escapeAttr(value) {
+      return escapeHtml(value).replaceAll('`', '&#096;');
+    }
+
+    els.tripName.addEventListener('input', saveData);
+    els.currencySymbol.addEventListener('input', () => {
+      saveData();
+      renderExpenses();
+      if (expenses.length > 0) calculateResults();
+    });
+
+    els.personName.addEventListener('keydown', event => {
+      if (event.key === 'Enter') addPerson();
+    });
+
+    loadData();
+    renderAll();
+    if (expenses.length > 0) calculateResults();
+  </script>
+</body>
+</html>
