@@ -402,10 +402,6 @@
         </div>
         <div class="row">
           <div class="field">
-            <label for="expenseCurrency">Expense currency</label>e="date" />
-        </div>
-        <div class="row">
-          <div class="field">
             <label for="expenseCurrency">Expense currency</label>
             <select id="expenseCurrency"></select>
           </div>
@@ -457,8 +453,8 @@
       newCurrencyCode: document.getElementById('newCurrencyCode'),
       newCurrencyRate: document.getElementById('newCurrencyRate'),
       currencyList: document.getElementById('currencyList'),
-      personName: document.getElementById('peexpenseAmount: document.getElementById('expenseAmount'),
-      expenseDate: document.getElementById('expenseDate'),eopleList'),
+      personName: document.getElementById('personName'),
+      peopleList: document.getElementById('peopleList'),
       expenseDescription: document.getElementById('expenseDescription'),
       expenseAmount: document.getElementById('expenseAmount'),
       expenseDate: document.getElementById('expenseDate'),
@@ -533,24 +529,9 @@
     }
 
     function parseRate(value) {
-      const cleaned = function normalizeName(name) {
-      return name.trim().replace(/\\s+/g, ' ');
-    }
-
-    function getTodayDateString() {
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, '0');
-      const day = String(today.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    }
-
-    function formatDateForDisplay(dateString) {
-      if (!dateString) return 'No date';
-      const [year, month, day] = dateString.split('-');
-      if (!year || !month || !day) return dateString;
-      return `${year}-${month}-${day}`;
-    }    const rate = Number(cleaned);
+      const cleaned = String(value).trim().replaceAll(',', '');
+      if (cleaned === '') return null;
+      const rate = Number(cleaned);
       if (!Number.isFinite(rate) || rate <= 0) return null;
       return rate;
     }
@@ -569,9 +550,18 @@
 
     function formatDateForDisplay(dateString) {
       if (!dateString) return 'No date';
-      const [year, month, day] = dateString.split('-');
-      if (!year || !month || !day) return dateString;
-      return `${year}-${month}-${day}`;
+      const parts = String(dateString).split('-');
+      if (parts.length !== 3) return dateString;
+      return `${parts[0]}-${parts[1]}-${parts[2]}`;
+    }
+
+    function sortCurrencies(codes) {
+      const uniqueValidCodes = [...new Set(codes.map(normalizeCurrencyCode).filter(isValidCurrencyCode))];
+      return uniqueValidCodes.sort((a, b) => {
+        if (a === settlementCurrency) return -1;
+        if (b === settlementCurrency) return 1;
+        return a.localeCompare(b);
+      });
     }
 
     function addPerson() {
@@ -636,9 +626,11 @@
 
     function removeCurrency(code) {
       if (code === settlementCurrency) {
-        alert('You cannot remove the current sconst amountCents = parseAmountToCents(els.expenseAmount.value);
-      const expenseDate = els.expenseDate.value || getTodayDateString();
-      const currency = els.expenseCurrency.value;expenses.some(expense => expense.currency === code);
+        alert('You cannot remove the current settlement currency. Change the settlement currency first.');
+        return;
+      }
+
+      const usedInExpense = expenses.some(expense => expense.currency === code);
       if (usedInExpense) {
         alert('This currency is used in an expense. Delete those expenses first.');
         return;
@@ -659,14 +651,10 @@
 
       const description = els.expenseDescription.value.trim() || 'Untitled expense';
       const amountCents = parseAmountToCents(els.expenseAmount.value);
-      const expenseDate = els.expenseDaamountCents,
-        date: expenseDate,
-        currency,();
+      const expenseDate = els.expenseDate.value || getTodayDateString();
       const currency = els.expenseCurrency.value;
       const paidBy = els.paidBy.value;
-   els.expenseAmount.value = '';
-      els.expenseDate.value = getTodayDateString();
-      selectAllParticipants();('.participant-check:checked')).map(input => input.value);
+      const participants = Array.from(document.querySelectorAll('.participant-check:checked')).map(input => input.value);
 
       if (amountCents === null || amountCents <= 0) {
         alert('Enter a valid amount with up to 2 decimal places.');
@@ -965,9 +953,7 @@
               </div>
               <button class="btn-danger btn-small remove-currency-button" data-currency="${code}" ${isSettlement || isUsed ? 'disabled' : ''}>Remove</button>
             </div>
-            <input clas<div class="expense-title">${escapeHtml(expense.description)}</div>
-                  <div class="muted">Date: ${formatDateForDisplay(expense.date)}</div>
-                  <div class="muted">Paid bysSettlement ? 'disabled' : ''} />
+            <input class="exchange-rate-input" data-currency="${code}" type="text" inputmode="decimal" value="${escapeAttr(value)}" ${isSettlement ? 'disabled' : ''} />
             <p class="muted">${helpText}${isUsed && !isSettlement ? ' This currency is used in expenses.' : ''}</p>
           </div>
         `;
@@ -1022,9 +1008,11 @@
         tripName: els.tripName.value,
         settlementCurrency,
         userCurrencies,
-currency: expense.currency || settlementCurrency,
-          date: expense.date || '',
-          paidBy: expense.paidBy,.setItem('tripSplitCalculatorData', JSON.stringify(data));
+        exchangeRates,
+        people,
+        expenses
+      };
+      localStorage.setItem('tripSplitCalculatorData', JSON.stringify(data));
     }
 
     function loadData() {
@@ -1049,9 +1037,7 @@ currency: expense.currency || settlementCurrency,
 
         const currenciesFromExpenses = expenses.map(expense => expense.currency).filter(Boolean);
         const currenciesFromRates = Object.keys(exchangeRates || {}).filter(isValidCurrencyCode);
-        const storedCurrencies = Array.isArels.tripName.value = '';
-      els.expenseDate.value = getTodayDateString();
-      els.results.innerHTML = '';lidCurrencyCode) : [];
+        const storedCurrencies = Array.isArray(data.userCurrencies) ? data.userCurrencies.filter(isValidCurrencyCode) : [];
 
         userCurrencies = sortCurrencies([...new Set([settlementCurrency, ...storedCurrencies, ...currenciesFromExpenses, ...currenciesFromRates])]);
         exchangeRates[settlementCurrency] = 1;
@@ -1083,6 +1069,7 @@ currency: expense.currency || settlementCurrency,
       exchangeRates = { EUR: 1 };
       els.tripName.value = '';
       els.expenseDate.value = getTodayDateString();
+      els.results.innerHTML = '';
       els.exportBox.value = '';
       localStorage.removeItem('tripSplitCalculatorData');
       renderAll();
@@ -1115,15 +1102,6 @@ currency: expense.currency || settlementCurrency,
       saveData();
       renderAll();
       if (expenses.length > 0) calculateResults();
-    }
-
-    function sortCurrencies(codes) {
-      const uniqueValidCodes = [...new Set(codes.map(normalizeCurrencyCode).filter(isValidCurrencyCode))];
-      return uniqueValidCodes.sort((a, b) => {
-        if (a === settlementCurrency) return -1;
-        if (b === settlementCurrency) return 1;
-        return a.localeCompare(b);
-      });
     }
 
     function escapeHtml(value) {
@@ -1171,9 +1149,7 @@ currency: expense.currency || settlementCurrency,
     });
 
     els.settlementCurrency.addEventListener('change', event => {
-      handleSloadData();
-    if (!els.expenseDate.value) els.expenseDate.value = getTodayDateString();
-    renderAll();t.target.value);
+      handleSettlementCurrencyChange(event.target.value);
     });
 
     els.currencyList.addEventListener('input', event => {
@@ -1201,8 +1177,9 @@ currency: expense.currency || settlementCurrency,
     });
 
     loadData();
+    if (!els.expenseDate.value) els.expenseDate.value = getTodayDateString();
     renderAll();
-    iulateResults();
+    if (expenses.length > 0) calculateResults();
   </script>
 </body>
 </html>
