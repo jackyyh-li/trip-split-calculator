@@ -396,6 +396,14 @@
             <input id="expenseAmount" type="text" inputmode="decimal" placeholder="120.00" />
           </div>
         </div>
+        <div class="field">
+          <label for="expenseDate">Expense date</label>
+          <input id="expenseDate" type="date" />
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="expenseCurrency">Expense currency</label>e="date" />
+        </div>
         <div class="row">
           <div class="field">
             <label for="expenseCurrency">Expense currency</label>
@@ -449,10 +457,11 @@
       newCurrencyCode: document.getElementById('newCurrencyCode'),
       newCurrencyRate: document.getElementById('newCurrencyRate'),
       currencyList: document.getElementById('currencyList'),
-      personName: document.getElementById('personName'),
-      peopleList: document.getElementById('peopleList'),
+      personName: document.getElementById('peexpenseAmount: document.getElementById('expenseAmount'),
+      expenseDate: document.getElementById('expenseDate'),eopleList'),
       expenseDescription: document.getElementById('expenseDescription'),
       expenseAmount: document.getElementById('expenseAmount'),
+      expenseDate: document.getElementById('expenseDate'),
       expenseCurrency: document.getElementById('expenseCurrency'),
       paidBy: document.getElementById('paidBy'),
       participantChecks: document.getElementById('participantChecks'),
@@ -524,15 +533,45 @@
     }
 
     function parseRate(value) {
-      const cleaned = String(value).trim().replaceAll(',', '');
-      if (cleaned === '') return null;
-      const rate = Number(cleaned);
+      const cleaned = function normalizeName(name) {
+      return name.trim().replace(/\\s+/g, ' ');
+    }
+
+    function getTodayDateString() {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function formatDateForDisplay(dateString) {
+      if (!dateString) return 'No date';
+      const [year, month, day] = dateString.split('-');
+      if (!year || !month || !day) return dateString;
+      return `${year}-${month}-${day}`;
+    }    const rate = Number(cleaned);
       if (!Number.isFinite(rate) || rate <= 0) return null;
       return rate;
     }
 
     function normalizeName(name) {
       return name.trim().replace(/\s+/g, ' ');
+    }
+
+    function getTodayDateString() {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function formatDateForDisplay(dateString) {
+      if (!dateString) return 'No date';
+      const [year, month, day] = dateString.split('-');
+      if (!year || !month || !day) return dateString;
+      return `${year}-${month}-${day}`;
     }
 
     function addPerson() {
@@ -597,11 +636,9 @@
 
     function removeCurrency(code) {
       if (code === settlementCurrency) {
-        alert('You cannot remove the current settlement currency. Change the settlement currency first.');
-        return;
-      }
-
-      const usedInExpense = expenses.some(expense => expense.currency === code);
+        alert('You cannot remove the current sconst amountCents = parseAmountToCents(els.expenseAmount.value);
+      const expenseDate = els.expenseDate.value || getTodayDateString();
+      const currency = els.expenseCurrency.value;expenses.some(expense => expense.currency === code);
       if (usedInExpense) {
         alert('This currency is used in an expense. Delete those expenses first.');
         return;
@@ -622,9 +659,14 @@
 
       const description = els.expenseDescription.value.trim() || 'Untitled expense';
       const amountCents = parseAmountToCents(els.expenseAmount.value);
+      const expenseDate = els.expenseDaamountCents,
+        date: expenseDate,
+        currency,();
       const currency = els.expenseCurrency.value;
       const paidBy = els.paidBy.value;
-      const participants = Array.from(document.querySelectorAll('.participant-check:checked')).map(input => input.value);
+   els.expenseAmount.value = '';
+      els.expenseDate.value = getTodayDateString();
+      selectAllParticipants();('.participant-check:checked')).map(input => input.value);
 
       if (amountCents === null || amountCents <= 0) {
         alert('Enter a valid amount with up to 2 decimal places.');
@@ -650,6 +692,7 @@
         id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
         description,
         amountCents,
+        date: expenseDate,
         currency,
         paidBy,
         participants
@@ -657,6 +700,7 @@
 
       els.expenseDescription.value = '';
       els.expenseAmount.value = '';
+      els.expenseDate.value = getTodayDateString();
       selectAllParticipants();
       saveData();
       renderAll();
@@ -921,7 +965,9 @@
               </div>
               <button class="btn-danger btn-small remove-currency-button" data-currency="${code}" ${isSettlement || isUsed ? 'disabled' : ''}>Remove</button>
             </div>
-            <input class="exchange-rate-input" data-currency="${code}" type="text" inputmode="decimal" value="${escapeAttr(value)}" ${isSettlement ? 'disabled' : ''} />
+            <input clas<div class="expense-title">${escapeHtml(expense.description)}</div>
+                  <div class="muted">Date: ${formatDateForDisplay(expense.date)}</div>
+                  <div class="muted">Paid bysSettlement ? 'disabled' : ''} />
             <p class="muted">${helpText}${isUsed && !isSettlement ? ' This currency is used in expenses.' : ''}</p>
           </div>
         `;
@@ -941,6 +987,7 @@
               <div class="expense-top">
                 <div>
                   <div class="expense-title">${escapeHtml(expense.description)}</div>
+                  <div class="muted">Date: ${formatDateForDisplay(expense.date)}</div>
                   <div class="muted">Paid by ${escapeHtml(expense.paidBy)} · Split between ${expense.participants.map(escapeHtml).join(', ')}</div>
                   <div class="muted">${convertedText}</div>
                 </div>
@@ -975,11 +1022,9 @@
         tripName: els.tripName.value,
         settlementCurrency,
         userCurrencies,
-        exchangeRates,
-        people,
-        expenses
-      };
-      localStorage.setItem('tripSplitCalculatorData', JSON.stringify(data));
+currency: expense.currency || settlementCurrency,
+          date: expense.date || '',
+          paidBy: expense.paidBy,.setItem('tripSplitCalculatorData', JSON.stringify(data));
     }
 
     function loadData() {
@@ -997,13 +1042,16 @@
           description: expense.description || 'Untitled expense',
           amountCents: Number.isInteger(expense.amountCents) ? expense.amountCents : Math.round(Number(expense.amount || 0) * 100),
           currency: expense.currency || settlementCurrency,
+          date: expense.date || '',
           paidBy: expense.paidBy,
           participants: Array.isArray(expense.participants) ? expense.participants : []
         })) : [];
 
         const currenciesFromExpenses = expenses.map(expense => expense.currency).filter(Boolean);
         const currenciesFromRates = Object.keys(exchangeRates || {}).filter(isValidCurrencyCode);
-        const storedCurrencies = Array.isArray(data.userCurrencies) ? data.userCurrencies.filter(isValidCurrencyCode) : [];
+        const storedCurrencies = Array.isArels.tripName.value = '';
+      els.expenseDate.value = getTodayDateString();
+      els.results.innerHTML = '';lidCurrencyCode) : [];
 
         userCurrencies = sortCurrencies([...new Set([settlementCurrency, ...storedCurrencies, ...currenciesFromExpenses, ...currenciesFromRates])]);
         exchangeRates[settlementCurrency] = 1;
@@ -1034,7 +1082,7 @@
       settlementCurrency = 'EUR';
       exchangeRates = { EUR: 1 };
       els.tripName.value = '';
-      els.results.innerHTML = '';
+      els.expenseDate.value = getTodayDateString();
       els.exportBox.value = '';
       localStorage.removeItem('tripSplitCalculatorData');
       renderAll();
@@ -1123,7 +1171,9 @@
     });
 
     els.settlementCurrency.addEventListener('change', event => {
-      handleSettlementCurrencyChange(event.target.value);
+      handleSloadData();
+    if (!els.expenseDate.value) els.expenseDate.value = getTodayDateString();
+    renderAll();t.target.value);
     });
 
     els.currencyList.addEventListener('input', event => {
@@ -1152,7 +1202,7 @@
 
     loadData();
     renderAll();
-    if (expenses.length > 0) calculateResults();
+    iulateResults();
   </script>
 </body>
 </html>
