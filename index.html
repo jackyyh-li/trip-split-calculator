@@ -15,6 +15,9 @@
       --primary-dark: #1d4ed8;
       --danger: #dc2626;
       --success: #15803d;
+      --warning-bg: #fff7ed;
+      --warning-border: #fed7aa;
+      --warning-text: #9a3412;
       --shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
       --radius: 18px;
     }
@@ -32,7 +35,7 @@
     }
 
     .page {
-      max-width: 1100px;
+      max-width: 1120px;
       margin: 0 auto;
       padding: 28px 18px 60px;
     }
@@ -45,6 +48,10 @@
       margin: 0 0 8px;
       font-size: 34px;
       letter-spacing: -0.03em;
+    }
+
+    h3 {
+      margin: 18px 0 8px;
     }
 
     .subtitle {
@@ -190,6 +197,16 @@
       font-size: 14px;
     }
 
+    .warning {
+      background: var(--warning-bg);
+      border: 1px solid var(--warning-border);
+      color: var(--warning-text);
+      border-radius: 14px;
+      padding: 12px;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+
     .participants {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -213,11 +230,33 @@
       margin: 0;
     }
 
+    .rate-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .rate-card {
+      background: #f9fafb;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+    }
+
+    .rate-label {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
     .result-section {
       margin-top: 18px;
     }
 
-    .balance-row, .settlement-row {
+    .balance-row, .settlement-row, .total-row {
       display: flex;
       justify-content: space-between;
       gap: 12px;
@@ -225,7 +264,7 @@
       border-bottom: 1px solid var(--border);
     }
 
-    .balance-row:last-child, .settlement-row:last-child {
+    .balance-row:last-child, .settlement-row:last-child, .total-row:last-child {
       border-bottom: 0;
     }
 
@@ -257,7 +296,7 @@
     }
 
     textarea {
-      min-height: 170px;
+      min-height: 190px;
       resize: vertical;
     }
 
@@ -268,7 +307,7 @@
     }
 
     @media (max-width: 800px) {
-      .grid, .row {
+      .grid, .row, .rate-grid {
         grid-template-columns: 1fr;
       }
 
@@ -286,7 +325,7 @@
   <main class="page">
     <header>
       <h1>Trip Split Calculator</h1>
-      <p class="subtitle">Add people, add expenses, choose participants, then calculate the easiest way to pay each other back.</p>
+      <p class="subtitle">Add people, add expenses in different currencies, then calculate the easiest settlement in one chosen currency.</p>
     </header>
 
     <section class="grid">
@@ -297,12 +336,13 @@
           <input id="tripName" type="text" placeholder="Europe Trip" />
         </div>
         <div class="field">
-          <label for="currencySymbol">Currency symbol</label>
-          <input id="currencySymbol" type="text" value="€" maxlength="4" />
+          <label for="settlementCurrency">Settlement and export currency</label>
+          <select id="settlementCurrency"></select>
+          <p class="muted">This is the currency used for final balances and who pays whom.</p>
         </div>
         <div class="button-row">
-          <button class="btn-secondary" onclick="saveData()">Save</button>
-          <button class="btn-danger" onclick="clearAllData()">Clear all</button>
+          <button id="saveButton" class="btn-secondary">Save</button>
+          <button id="clearAllButton" class="btn-danger">Clear all</button>
         </div>
       </div>
 
@@ -312,12 +352,19 @@
           <label for="personName">Person name</label>
           <input id="personName" type="text" placeholder="Jacky" />
         </div>
-        <button class="btn-primary" onclick="addPerson()">Add person</button>
+        <button id="addPersonButton" class="btn-primary">Add person</button>
         <div id="peopleList" class="list"></div>
       </div>
 
       <div class="card full-width">
-        <h2>3. Add expense</h2>
+        <h2>3. Exchange rates</h2>
+        <p class="muted">Enter rates only for currencies used by your expenses. Format: 1 expense currency = how much in the settlement currency.</p>
+        <div id="exchangeRatesList" class="rate-grid"></div>
+        <div class="warning">Exchange rates are manual in this free GitHub Pages version. Update them before using the final settlement for real payments.</div>
+      </div>
+
+      <div class="card full-width">
+        <h2>4. Add expense</h2>
         <div class="row">
           <div class="field">
             <label for="expenseDescription">Description</label>
@@ -325,64 +372,128 @@
           </div>
           <div class="field">
             <label for="expenseAmount">Amount</label>
-            <input id="expenseAmount" type="number" min="0" step="0.01" placeholder="120.00" />
+            <input id="expenseAmount" type="text" inputmode="decimal" placeholder="120.00" />
           </div>
         </div>
-        <div class="field">
-          <label for="paidBy">Paid by</label>
-          <select id="paidBy"></select>
+        <div class="row">
+          <div class="field">
+            <label for="expenseCurrency">Expense currency</label>
+            <select id="expenseCurrency"></select>
+          </div>
+          <div class="field">
+            <label for="paidBy">Paid by</label>
+            <select id="paidBy"></select>
+          </div>
         </div>
         <div class="field">
           <label>Who participated in this expense?</label>
           <div class="button-row">
-            <button class="btn-secondary btn-small" onclick="selectAllParticipants()">Select all</button>
-            <button class="btn-secondary btn-small" onclick="clearParticipants()">Clear</button>
+            <button id="selectAllButton" class="btn-secondary btn-small">Select all</button>
+            <button id="clearParticipantsButton" class="btn-secondary btn-small">Clear</button>
           </div>
           <div id="participantChecks" class="participants"></div>
         </div>
-        <button class="btn-primary" onclick="addExpense()">Add expense</button>
+        <button id="addExpenseButton" class="btn-primary">Add expense</button>
       </div>
 
       <div class="card full-width">
-        <h2>4. Expenses</h2>
+        <h2>5. Expenses</h2>
         <div id="expenseList" class="list"></div>
       </div>
 
       <div class="card full-width">
-        <h2>5. Results</h2>
-        <button class="btn-primary" onclick="calculateResults()">Calculate split</button>
+        <h2>6. Results</h2>
+        <button id="calculateButton" class="btn-primary">Calculate split</button>
         <div id="results" class="result-section"></div>
       </div>
 
       <div class="card full-width">
-        <h2>6. Export summary</h2>
-        <p class="muted">Copy this result and send it to your friends.</p>
+        <h2>7. Export summary</h2>
+        <p class="muted">The export uses the settlement currency chosen in Trip settings.</p>
         <textarea id="exportBox" readonly placeholder="Your summary will appear here after calculation."></textarea>
       </div>
     </section>
   </main>
 
   <script>
+    const currencies = [
+      { code: 'CAD', label: 'Canadian Dollar' },
+      { code: 'USD', label: 'US Dollar' },
+      { code: 'EUR', label: 'Euro' },
+      { code: 'GBP', label: 'British Pound' },
+      { code: 'CHF', label: 'Swiss Franc' },
+      { code: 'JPY', label: 'Japanese Yen' },
+      { code: 'TWD', label: 'New Taiwan Dollar' },
+      { code: 'CNY', label: 'Chinese Yuan' }
+    ];
+
     let people = [];
     let expenses = [];
+    let settlementCurrency = 'EUR';
+    let exchangeRates = { EUR: 1 };
 
     const els = {
       tripName: document.getElementById('tripName'),
-      currencySymbol: document.getElementById('currencySymbol'),
+      settlementCurrency: document.getElementById('settlementCurrency'),
+      exchangeRatesList: document.getElementById('exchangeRatesList'),
       personName: document.getElementById('personName'),
       peopleList: document.getElementById('peopleList'),
       expenseDescription: document.getElementById('expenseDescription'),
       expenseAmount: document.getElementById('expenseAmount'),
+      expenseCurrency: document.getElementById('expenseCurrency'),
       paidBy: document.getElementById('paidBy'),
       participantChecks: document.getElementById('participantChecks'),
       expenseList: document.getElementById('expenseList'),
       results: document.getElementById('results'),
-      exportBox: document.getElementById('exportBox')
+      exportBox: document.getElementById('exportBox'),
+      saveButton: document.getElementById('saveButton'),
+      clearAllButton: document.getElementById('clearAllButton'),
+      addPersonButton: document.getElementById('addPersonButton'),
+      addExpenseButton: document.getElementById('addExpenseButton'),
+      selectAllButton: document.getElementById('selectAllButton'),
+      clearParticipantsButton: document.getElementById('clearParticipantsButton'),
+      calculateButton: document.getElementById('calculateButton')
     };
 
-    function money(value) {
-      const symbol = els.currencySymbol.value || '$';
-      return `${symbol}${Number(value).toFixed(2)}`;
+    function currencyOptionHtml(selectedCode = '') {
+      return currencies
+        .map(currency => `<option value="${currency.code}" ${currency.code === selectedCode ? 'selected' : ''}>${currency.code} · ${currency.label}</option>`)
+        .join('');
+    }
+
+    function getCurrencyLabel(code) {
+      const found = currencies.find(currency => currency.code === code);
+      return found ? found.label : code;
+    }
+
+    function formatMoney(cents, currencyCode = settlementCurrency) {
+      const amount = cents / 100;
+      try {
+        return new Intl.NumberFormat('en-CA', {
+          style: 'currency',
+          currency: currencyCode,
+          currencyDisplay: 'narrowSymbol'
+        }).format(amount);
+      } catch {
+        return `${currencyCode} ${amount.toFixed(2)}`;
+      }
+    }
+
+    function parseAmountToCents(value) {
+      const cleaned = String(value).trim().replaceAll(',', '');
+      if (!/^\d+(\.\d{1,2})?$/.test(cleaned)) return null;
+
+      const [wholePart, decimalPart = ''] = cleaned.split('.');
+      const centsPart = decimalPart.padEnd(2, '0').slice(0, 2);
+      return Number(wholePart) * 100 + Number(centsPart);
+    }
+
+    function parseRate(value) {
+      const cleaned = String(value).trim().replaceAll(',', '');
+      if (cleaned === '') return null;
+      const rate = Number(cleaned);
+      if (!Number.isFinite(rate) || rate <= 0) return null;
+      return rate;
     }
 
     function normalizeName(name) {
@@ -407,14 +518,15 @@
       renderAll();
     }
 
-    function removePerson(name) {
+    function removePerson(index) {
+      const name = people[index];
       const usedInExpense = expenses.some(expense => expense.paidBy === name || expense.participants.includes(name));
       if (usedInExpense) {
         alert('This person is used in an expense. Delete related expenses first.');
         return;
       }
 
-      people = people.filter(person => person !== name);
+      people.splice(index, 1);
       saveData();
       renderAll();
     }
@@ -426,12 +538,18 @@
       }
 
       const description = els.expenseDescription.value.trim() || 'Untitled expense';
-      const amount = Number(els.expenseAmount.value);
+      const amountCents = parseAmountToCents(els.expenseAmount.value);
+      const currency = els.expenseCurrency.value;
       const paidBy = els.paidBy.value;
       const participants = Array.from(document.querySelectorAll('.participant-check:checked')).map(input => input.value);
 
-      if (!amount || amount <= 0) {
-        alert('Enter a valid amount.');
+      if (amountCents === null || amountCents <= 0) {
+        alert('Enter a valid amount with up to 2 decimal places.');
+        return;
+      }
+
+      if (!currency) {
+        alert('Choose an expense currency.');
         return;
       }
 
@@ -448,10 +566,13 @@
       expenses.push({
         id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
         description,
-        amount,
+        amountCents,
+        currency,
         paidBy,
         participants
       });
+
+      if (!(currency in exchangeRates)) exchangeRates[currency] = currency === settlementCurrency ? 1 : null;
 
       els.expenseDescription.value = '';
       els.expenseAmount.value = '';
@@ -468,81 +589,123 @@
       calculateResults();
     }
 
+    function convertToSettlementCents(amountCents, fromCurrency) {
+      if (fromCurrency === settlementCurrency) return amountCents;
+
+      const rate = parseRate(exchangeRates[fromCurrency]);
+      if (rate === null) return null;
+
+      return Math.round((amountCents / 100) * rate * 100);
+    }
+
+    function getUsedCurrencies() {
+      return [...new Set(expenses.map(expense => expense.currency))].sort();
+    }
+
+    function validateExchangeRates() {
+      const missing = getUsedCurrencies().filter(currency => {
+        if (currency === settlementCurrency) return false;
+        return parseRate(exchangeRates[currency]) === null;
+      });
+
+      return missing;
+    }
+
     function calculateResults() {
       if (people.length === 0) {
         els.results.innerHTML = '<div class="empty">Add people first.</div>';
+        els.exportBox.value = '';
+        return;
+      }
+
+      const missingRates = validateExchangeRates();
+      if (missingRates.length > 0) {
+        els.results.innerHTML = `<div class="warning">Missing exchange rate: ${missingRates.join(', ')} to ${settlementCurrency}. Add the rate first, then calculate again.</div>`;
+        els.exportBox.value = '';
         return;
       }
 
       const balances = Object.fromEntries(people.map(person => [person, 0]));
-      let totalSpent = 0;
+      const totalsByCurrency = {};
+      let totalSettlementCents = 0;
 
       expenses.forEach(expense => {
-        totalSpent += expense.amount;
-        balances[expense.paidBy] += expense.amount;
-        const share = expense.amount / expense.participants.length;
-        expense.participants.forEach(person => {
-          balances[person] -= share;
+        const convertedCents = convertToSettlementCents(expense.amountCents, expense.currency);
+        if (convertedCents === null) return;
+
+        totalsByCurrency[expense.currency] = (totalsByCurrency[expense.currency] || 0) + expense.amountCents;
+        totalSettlementCents += convertedCents;
+        balances[expense.paidBy] += convertedCents;
+
+        const participantCount = expense.participants.length;
+        const baseShare = Math.floor(convertedCents / participantCount);
+        const remainder = convertedCents % participantCount;
+
+        expense.participants.forEach((person, index) => {
+          const exactCentShare = baseShare + (index < remainder ? 1 : 0);
+          balances[person] -= exactCentShare;
         });
       });
 
       const settlements = simplifySettlements(balances);
-      renderResults(balances, settlements, totalSpent);
-      buildExportText(balances, settlements, totalSpent);
+      renderResults(balances, settlements, totalsByCurrency, totalSettlementCents);
+      buildExportText(balances, settlements, totalsByCurrency, totalSettlementCents);
     }
 
     function simplifySettlements(balances) {
       const creditors = [];
       const debtors = [];
 
-      Object.entries(balances).forEach(([person, balance]) => {
-        const rounded = Math.round(balance * 100) / 100;
-        if (rounded > 0) creditors.push({ person, amount: rounded });
-        if (rounded < 0) debtors.push({ person, amount: Math.abs(rounded) });
+      Object.entries(balances).forEach(([person, balanceCents]) => {
+        if (balanceCents > 0) creditors.push({ person, amountCents: balanceCents });
+        if (balanceCents < 0) debtors.push({ person, amountCents: Math.abs(balanceCents) });
       });
 
-      creditors.sort((a, b) => b.amount - a.amount);
-      debtors.sort((a, b) => b.amount - a.amount);
+      creditors.sort((a, b) => b.amountCents - a.amountCents);
+      debtors.sort((a, b) => b.amountCents - a.amountCents);
 
       const settlements = [];
       let i = 0;
       let j = 0;
 
       while (i < debtors.length && j < creditors.length) {
-        const payment = Math.min(debtors[i].amount, creditors[j].amount);
-        const roundedPayment = Math.round(payment * 100) / 100;
+        const paymentCents = Math.min(debtors[i].amountCents, creditors[j].amountCents);
 
-        if (roundedPayment > 0) {
+        if (paymentCents > 0) {
           settlements.push({
             from: debtors[i].person,
             to: creditors[j].person,
-            amount: roundedPayment
+            amountCents: paymentCents
           });
         }
 
-        debtors[i].amount = Math.round((debtors[i].amount - payment) * 100) / 100;
-        creditors[j].amount = Math.round((creditors[j].amount - payment) * 100) / 100;
+        debtors[i].amountCents -= paymentCents;
+        creditors[j].amountCents -= paymentCents;
 
-        if (debtors[i].amount <= 0) i++;
-        if (creditors[j].amount <= 0) j++;
+        if (debtors[i].amountCents === 0) i++;
+        if (creditors[j].amountCents === 0) j++;
       }
 
       return settlements;
     }
 
-    function renderResults(balances, settlements, totalSpent) {
+    function renderResults(balances, settlements, totalsByCurrency, totalSettlementCents) {
+      const originalTotalsHtml = Object.entries(totalsByCurrency)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([currency, cents]) => `<div class="total-row"><span>${currency}</span><strong>${formatMoney(cents, currency)}</strong></div>`)
+        .join('');
+
       const balanceHtml = Object.entries(balances)
-        .map(([person, balance]) => {
-          const rounded = Math.round(balance * 100) / 100;
+        .map(([person, balanceCents]) => {
           let className = 'neutral';
           let label = 'settled';
 
-          if (rounded > 0) {
+          if (balanceCents > 0) {
             className = 'positive';
-            label = `gets back ${money(rounded)}`;
-          } else if (rounded < 0) {
+            label = `gets back ${formatMoney(balanceCents, settlementCurrency)}`;
+          } else if (balanceCents < 0) {
             className = 'negative';
-            label = `owes ${money(Math.abs(rounded))}`;
+            label = `owes ${formatMoney(Math.abs(balanceCents), settlementCurrency)}`;
           }
 
           return `<div class="balance-row"><span>${escapeHtml(person)}</span><span class="${className}">${label}</span></div>`;
@@ -550,45 +713,74 @@
         .join('');
 
       const settlementHtml = settlements.length
-        ? settlements.map(item => `<div class="settlement-row"><span>${escapeHtml(item.from)} pays ${escapeHtml(item.to)}</span><strong>${money(item.amount)}</strong></div>`).join('')
+        ? settlements.map(item => `<div class="settlement-row"><span>${escapeHtml(item.from)} pays ${escapeHtml(item.to)}</span><strong>${formatMoney(item.amountCents, settlementCurrency)}</strong></div>`).join('')
         : '<div class="empty">No payments needed.</div>';
 
       els.results.innerHTML = `
-        <div class="summary-box"><strong>Total spent:</strong> ${money(totalSpent)}</div>
+        <div class="summary-box"><strong>Total spent in settlement currency:</strong> ${formatMoney(totalSettlementCents, settlementCurrency)}</div>
+        <div class="result-section">
+          <h3>Original totals by currency</h3>
+          ${originalTotalsHtml || '<div class="empty">No expenses yet.</div>'}
+        </div>
         <div class="result-section">
           <h3>Balance by person</h3>
           ${balanceHtml || '<div class="empty">No balances yet.</div>'}
         </div>
         <div class="result-section">
-          <h3>Easiest settlement</h3>
+          <h3>Easiest settlement in ${settlementCurrency}</h3>
           ${settlementHtml}
         </div>
       `;
     }
 
-    function buildExportText(balances, settlements, totalSpent) {
+    function buildExportText(balances, settlements, totalsByCurrency, totalSettlementCents) {
       const tripName = els.tripName.value.trim() || 'Trip';
       const lines = [];
+      const usedCurrencies = getUsedCurrencies();
+
       lines.push(`${tripName} expense summary`);
-      lines.push(`Total spent: ${money(totalSpent)}`);
+      lines.push(`Settlement currency: ${settlementCurrency} (${getCurrencyLabel(settlementCurrency)})`);
+      lines.push(`Total spent in settlement currency: ${formatMoney(totalSettlementCents, settlementCurrency)}`);
+      lines.push('');
+
+      lines.push('Original totals by currency:');
+      if (Object.keys(totalsByCurrency).length === 0) {
+        lines.push('No expenses yet.');
+      } else {
+        Object.entries(totalsByCurrency)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .forEach(([currency, cents]) => {
+            lines.push(`${currency}: ${formatMoney(cents, currency)}`);
+          });
+      }
+
+      if (usedCurrencies.some(currency => currency !== settlementCurrency)) {
+        lines.push('');
+        lines.push('Exchange rates used:');
+        usedCurrencies.forEach(currency => {
+          if (currency !== settlementCurrency) {
+            lines.push(`1 ${currency} = ${exchangeRates[currency]} ${settlementCurrency}`);
+          }
+        });
+      }
+
       lines.push('');
       lines.push('Balance by person:');
 
-      Object.entries(balances).forEach(([person, balance]) => {
-        const rounded = Math.round(balance * 100) / 100;
-        if (rounded > 0) lines.push(`${person} gets back ${money(rounded)}`);
-        else if (rounded < 0) lines.push(`${person} owes ${money(Math.abs(rounded))}`);
+      Object.entries(balances).forEach(([person, balanceCents]) => {
+        if (balanceCents > 0) lines.push(`${person} gets back ${formatMoney(balanceCents, settlementCurrency)}`);
+        else if (balanceCents < 0) lines.push(`${person} owes ${formatMoney(Math.abs(balanceCents), settlementCurrency)}`);
         else lines.push(`${person} is settled`);
       });
 
       lines.push('');
-      lines.push('Easiest settlement:');
+      lines.push(`Easiest settlement in ${settlementCurrency}:`);
 
       if (settlements.length === 0) {
         lines.push('No payments needed.');
       } else {
         settlements.forEach(item => {
-          lines.push(`${item.from} pays ${item.to}: ${money(item.amount)}`);
+          lines.push(`${item.from} pays ${item.to}: ${formatMoney(item.amountCents, settlementCurrency)}`);
         });
       }
 
@@ -597,10 +789,10 @@
 
     function renderPeople() {
       els.peopleList.innerHTML = people.length
-        ? people.map(person => `
+        ? people.map((person, index) => `
           <div class="person-pill">
             <strong>${escapeHtml(person)}</strong>
-            <button class="btn-danger btn-small" onclick="removePerson('${escapeAttr(person)}')">Remove</button>
+            <button class="btn-danger btn-small remove-person-button" data-index="${index}">Remove</button>
           </div>
         `).join('')
         : '<div class="empty">No people added yet.</div>';
@@ -623,24 +815,58 @@
         : '<div class="empty">Add people first.</div>';
     }
 
+    function renderCurrencySelectors() {
+      els.settlementCurrency.innerHTML = currencyOptionHtml(settlementCurrency);
+      els.expenseCurrency.innerHTML = currencyOptionHtml(settlementCurrency);
+    }
+
+    function renderExchangeRates() {
+      els.exchangeRatesList.innerHTML = currencies.map(currency => {
+        const isSettlement = currency.code === settlementCurrency;
+        const value = isSettlement ? 1 : exchangeRates[currency.code] ?? '';
+        const placeholder = `1 ${currency.code} = ? ${settlementCurrency}`;
+
+        return `
+          <div class="rate-card">
+            <div class="rate-label">
+              <span>${currency.code}</span>
+              <span class="muted">${currency.label}</span>
+            </div>
+            <input class="exchange-rate-input" data-currency="${currency.code}" type="text" inputmode="decimal" value="${escapeAttr(value)}" placeholder="${placeholder}" ${isSettlement ? 'disabled' : ''} />
+            <p class="muted">1 ${currency.code} = this many ${settlementCurrency}</p>
+          </div>
+        `;
+      }).join('');
+    }
+
     function renderExpenses() {
       els.expenseList.innerHTML = expenses.length
-        ? expenses.map(expense => `
-          <div class="expense-item">
-            <div class="expense-top">
-              <div>
-                <div class="expense-title">${escapeHtml(expense.description)}</div>
-                <div class="muted">Paid by ${escapeHtml(expense.paidBy)} · Split between ${expense.participants.map(escapeHtml).join(', ')}</div>
+        ? expenses.map(expense => {
+          const convertedCents = convertToSettlementCents(expense.amountCents, expense.currency);
+          const convertedText = convertedCents === null
+            ? `Missing ${expense.currency} to ${settlementCurrency} rate`
+            : `Settlement value: ${formatMoney(convertedCents, settlementCurrency)}`;
+
+          return `
+            <div class="expense-item">
+              <div class="expense-top">
+                <div>
+                  <div class="expense-title">${escapeHtml(expense.description)}</div>
+                  <div class="muted">Paid by ${escapeHtml(expense.paidBy)} · Split between ${expense.participants.map(escapeHtml).join(', ')}</div>
+                  <div class="muted">${convertedText}</div>
+                </div>
+                <div><strong>${formatMoney(expense.amountCents, expense.currency)}</strong></div>
               </div>
-              <div><strong>${money(expense.amount)}</strong></div>
+              <button class="btn-danger btn-small delete-expense-button" data-id="${escapeAttr(expense.id)}">Delete</button>
             </div>
-            <button class="btn-danger btn-small" onclick="deleteExpense('${expense.id}')">Delete</button>
-          </div>
-        `).join('')
+          `;
+        }).join('')
         : '<div class="empty">No expenses added yet.</div>';
     }
 
     function renderAll() {
+      renderCurrencySelectors();
+      renderExchangeRates();
       renderPeople();
       renderPayerOptions();
       renderParticipantChecks();
@@ -658,7 +884,8 @@
     function saveData() {
       const data = {
         tripName: els.tripName.value,
-        currencySymbol: els.currencySymbol.value,
+        settlementCurrency,
+        exchangeRates,
         people,
         expenses
       };
@@ -672,27 +899,74 @@
       try {
         const data = JSON.parse(raw);
         els.tripName.value = data.tripName || '';
-        els.currencySymbol.value = data.currencySymbol || '€';
+        settlementCurrency = data.settlementCurrency || guessCurrencyFromOldSymbol(data.currencySymbol) || 'EUR';
+        exchangeRates = data.exchangeRates || { [settlementCurrency]: 1 };
+        exchangeRates[settlementCurrency] = 1;
         people = Array.isArray(data.people) ? data.people : [];
-        expenses = Array.isArray(data.expenses) ? data.expenses : [];
+        expenses = Array.isArray(data.expenses) ? data.expenses.map(expense => ({
+          id: expense.id || String(Date.now()) + Math.random(),
+          description: expense.description || 'Untitled expense',
+          amountCents: Number.isInteger(expense.amountCents) ? expense.amountCents : Math.round(Number(expense.amount || 0) * 100),
+          currency: expense.currency || settlementCurrency,
+          paidBy: expense.paidBy,
+          participants: Array.isArray(expense.participants) ? expense.participants : []
+        })) : [];
       } catch {
         people = [];
         expenses = [];
+        settlementCurrency = 'EUR';
+        exchangeRates = { EUR: 1 };
       }
     }
 
+    function guessCurrencyFromOldSymbol(symbol) {
+      if (symbol === '€') return 'EUR';
+      if (symbol === '£') return 'GBP';
+      if (symbol === '¥') return 'JPY';
+      if (symbol === '$') return 'CAD';
+      return null;
+    }
+
     function clearAllData() {
-      const confirmed = confirm('Clear all people, expenses, and saved data?');
+      const confirmed = confirm('Clear all people, expenses, exchange rates, and saved data?');
       if (!confirmed) return;
 
       people = [];
       expenses = [];
+      settlementCurrency = 'EUR';
+      exchangeRates = { EUR: 1 };
       els.tripName.value = '';
-      els.currencySymbol.value = '€';
       els.results.innerHTML = '';
       els.exportBox.value = '';
       localStorage.removeItem('tripSplitCalculatorData');
       renderAll();
+    }
+
+    function handleSettlementCurrencyChange(newCurrency) {
+      const oldCurrency = settlementCurrency;
+      if (newCurrency === oldCurrency) return;
+
+      const oldRateForNewCurrency = parseRate(exchangeRates[newCurrency]);
+      const oldRates = { ...exchangeRates };
+      settlementCurrency = newCurrency;
+
+      if (oldRateForNewCurrency !== null) {
+        exchangeRates = {};
+        currencies.forEach(currency => {
+          if (currency.code === settlementCurrency) {
+            exchangeRates[currency.code] = 1;
+          } else {
+            const oldRate = parseRate(oldRates[currency.code]);
+            exchangeRates[currency.code] = oldRate === null ? null : Number((oldRate / oldRateForNewCurrency).toFixed(8));
+          }
+        });
+      } else {
+        exchangeRates = { [settlementCurrency]: 1 };
+      }
+
+      saveData();
+      renderAll();
+      if (expenses.length > 0) calculateResults();
     }
 
     function escapeHtml(value) {
@@ -708,15 +982,45 @@
       return escapeHtml(value).replaceAll('`', '&#096;');
     }
 
+    els.saveButton.addEventListener('click', saveData);
+    els.clearAllButton.addEventListener('click', clearAllData);
+    els.addPersonButton.addEventListener('click', addPerson);
+    els.addExpenseButton.addEventListener('click', addExpense);
+    els.selectAllButton.addEventListener('click', selectAllParticipants);
+    els.clearParticipantsButton.addEventListener('click', clearParticipants);
+    els.calculateButton.addEventListener('click', calculateResults);
+
     els.tripName.addEventListener('input', saveData);
-    els.currencySymbol.addEventListener('input', () => {
+
+    els.personName.addEventListener('keydown', event => {
+      if (event.key === 'Enter') addPerson();
+    });
+
+    els.expenseAmount.addEventListener('keydown', event => {
+      if (event.key === 'Enter') addExpense();
+    });
+
+    els.settlementCurrency.addEventListener('change', event => {
+      handleSettlementCurrencyChange(event.target.value);
+    });
+
+    els.exchangeRatesList.addEventListener('input', event => {
+      if (!event.target.classList.contains('exchange-rate-input')) return;
+      const currency = event.target.dataset.currency;
+      exchangeRates[currency] = currency === settlementCurrency ? 1 : event.target.value.trim();
       saveData();
       renderExpenses();
       if (expenses.length > 0) calculateResults();
     });
 
-    els.personName.addEventListener('keydown', event => {
-      if (event.key === 'Enter') addPerson();
+    els.peopleList.addEventListener('click', event => {
+      if (!event.target.classList.contains('remove-person-button')) return;
+      removePerson(Number(event.target.dataset.index));
+    });
+
+    els.expenseList.addEventListener('click', event => {
+      if (!event.target.classList.contains('delete-expense-button')) return;
+      deleteExpense(event.target.dataset.id);
     });
 
     loadData();
